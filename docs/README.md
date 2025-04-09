@@ -6,19 +6,16 @@ Make sure you run this with `dunsw` version <v10_04_07d01 as that's when we swit
 
 The data lives in dunegpvms: /pnfs/dune/scratch/users/kwawrows/singlee_n50k/tps/
 
-These files contain TPs generated using different algorithms, but since this data comes from the threshold scan study, some available thresholds are really low. Decent ranges:
-- **Simple Threshold**:  20-30 ADC
-- **Running Sums**: 30-40 ADC
 
 
-The files contain TPs generated with all three algorithms (this was part of the threshold scan study, so some thresholds are way too low). In general I'd recommend to sticking to: 
+The files contain TPs generated with all three algorithms (this was part of the threshold scan study, so some thresholds are way too low). Decent ranges for analysis where you don't end up with a lot og noise are:
 
 - **Simple threshold**: 20-30 ADC
 - **Running sums**: 30-40 ADC
 
-If you want to analyze a run with a specific threshold or algorithm, you need to call the appropriate producer. For example, use `tpmakerTPC30RS` for a 30 ADC threshold run with Running Sum.
+If you want to analyse a run with a specific threshold or algorithm, you need to call the appropriate producer in the analser fcl. For example, use `tpmakerTPC30RS` for a 30 ADC threshold run with Running Sum.
 
-## Producers
+## TP producers 
 
 - `RunTrigger.. | tpmakerTPC35RS...` | std::vector<dunedaq::trgdataformats::TriggerPrimitive> | 40
 - `RunTrigger.. | tpmakerTPC30RS...` | std::vector<dunedaq::trgdataformats::TriggerPrimitive> | 2021
@@ -44,7 +41,7 @@ If you want to analyze a run with a specific threshold or algorithm, you need to
 The analyser can be found in the TriggerAna repo under `TPGAna_module.cc`. 
 
 ### Example FCL for running the analyser:
-Example fcls for running the analyser on TP output is in tpgtest_fcls. You should be able to run them with
+Example fcls for running the analyser on TP output are in tpgtest_fcls. You should be able to run them with something like
 
 ```bash
 lar -c runana_ST.fcl -S /pnfs/dune/scratch/users/kwawrows/singlee_n50k/tps/files_out.list -n 200
