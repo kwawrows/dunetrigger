@@ -1,6 +1,5 @@
 # TP Analysis
 
-Make sure you run this with `dunsw` version <v10_04_07d01 as that's when we switched to 16-bit ADCs and the code isn't ready for it yet.
 
 ## Data Location
 
