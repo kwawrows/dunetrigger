@@ -40,10 +40,10 @@ If you want to analyse a run with a specific threshold or algorithm, you need to
 The analyser can be found in the TriggerAna repo under `TPGAna_module.cc`. 
 
 ### Example FCL for running the analyser:
-Example fcls for running the analyser on TP output are in tpgtest_fcls. You should be able to run them with something like
+Example fcls for running the analyser on TP output are in  [tpgtest_fcls](./[tpgtest_fcls](https://github.com/kwawrows/dunetrigger/tree/develop/tpgtest_fcls)). You should be able to run them with something like
 
 ```bash
 lar -c runana_ST.fcl -S /pnfs/dune/scratch/users/kwawrows/singlee_n50k/tps/files_out.list -n 200
 ```
 
-The repository also has an example notebook (imaginatively named ExampleNotebook.ipynb) which shows how to read and process the resulting TTree. 
+The repository also has an example notebook (creatively named ExampleNotebook.ipynb) which shows how to read and process the resulting TTree. 
