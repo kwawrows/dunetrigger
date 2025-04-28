@@ -7,7 +7,7 @@ The data lives in dunegpvms: /pnfs/dune/scratch/users/kwawrows/singlee_n50k/tps/
 
 
 
-The files contain TPs generated with all three algorithms (this was part of the threshold scan study, so some thresholds are way too low). Decent ranges for analysis where you don't end up with a lot og noise are:
+The files contain TPs generated with all three algorithms (this was part of the threshold scan study, so some thresholds are way too low). Decent ranges for analysis (for 12-bit ADC range) where you don't end up with a lot of noise are:
 
 - **Simple threshold**: 20-30 ADC
 - **Running sums**: 30-40 ADC
