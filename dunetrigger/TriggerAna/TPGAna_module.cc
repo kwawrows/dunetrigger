@@ -137,7 +137,7 @@ private:
   std::vector<uint64_t> fTP_startT; 
   std::vector<uint64_t> fTP_peakT; 
   std::vector<uint64_t> fTP_TOT; 
-  std::vector<uint32_t> fTP_S;
+  std::vector<uint32_t> fTP_SADC;
   std::vector<uint16_t> fTP_peak; 
   std::vector<int>      fTP_plane;
   std::vector<int>      fTP_TPC;
