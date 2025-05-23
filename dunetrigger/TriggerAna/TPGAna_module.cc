@@ -5,6 +5,14 @@
 //
 // Generated at Fri Nov 15 01:56:30 2024 by Klaudia Wawrowska
 //
+// Module for dumping TPG and associated MC information to TTree for analysis.
+//
+// Simulation producers to specify: tp_tag, gen_tag (generator - singles, marley, genie etc.), simch_tag, 
+// Booleans which allow user to choose which information to save: SaveNeutrino, SaveMC (MCTruth not G4), SaveTPs
+// 
+// The association between MC and TP information uses IDEs. This requires some tweaks to make it work 
+// Specify ADC_SAMPLING_RATE_IN_DTS to go back to TPC ticks used in the simulation (1 tick = 500 ns or whatever) 
+// U/V window offsets for algs which work only on +ve induction pulses has to be set for 11 for U and 10/9 for V.
 ////////////////////////////////////////////////////////////////////////
 
 #include "art/Framework/Core/EDAnalyzer.h"
@@ -82,19 +90,20 @@ public:
 private:
 
   void ResetVariables();
-  //matching TPs to sim::IDEs 
+  //function for matching TPs to sim::IDEs 
   std::vector<const sim::IDE*> TPToSimIDEs_Ps(recob::Hit const& hit) const;
 
+  //fcl configurable sampling rate 
+  int fADC_SAMPLING_RATE_IN_DTS; // DTS time ticks between adc samples
 
   // Producer module, configurable from fhicl
   art::InputTag fTPLabel;
   art::InputTag fGenLabel; //generator label for "signal" particles
   std::string fSimChanLabel; // sim channel label
-  std::string fRawDigitLabel; //for saving raw waveforms to trees 
 
   bool fSaveMC;
+  bool fSaveNeutrino;
   bool fSaveTPs; 
-  bool fSaveRawDigit; 
 
   int foffsetU; //offset for valid TP window for IDE matching (needed for induction sigs).  
   int foffsetV; 
@@ -128,8 +137,8 @@ private:
   std::vector<uint64_t> fTP_startT; 
   std::vector<uint64_t> fTP_peakT; 
   std::vector<uint64_t> fTP_TOT; 
-  std::vector<uint32_t> fTP_SADC;
-  std::vector<uint16_t> fTP_peakADC; 
+  std::vector<uint32_t> fTP_S;
+  std::vector<uint16_t> fTP_peak; 
   std::vector<int>      fTP_plane;
   std::vector<int>      fTP_TPC;
   std::vector<int>      fTP_trueX;
@@ -137,11 +146,21 @@ private:
   std::vector<int>      fTP_trueZ;
   std::vector<int>      fTP_signal;
 
-  std::vector<raw::ChannelID_t> fRawDigitChan;
-  //std::vector<std::vector<int16_t>> fRawDigitADCs;
-  std::vector<raw::RawDigit::ADCvector_t> fRawDigitADCs;
 
   //Geant/truth info
+  std::vector<int> fNuPDG;
+  std::vector<int> fNuCCNC;
+  std::vector<int> fNuMode;
+  std::vector<float> fNuVx;
+  std::vector<float> fNuVy;
+  std::vector<float> fNuVz;
+  std::vector<float> fNuPx;
+  std::vector<float> fNuPy;
+  std::vector<float> fNuPz;
+  std::vector<float> fNuP;
+  std::vector<float> fNuE;
+
+
   unsigned int fnParticles; //total number of geant particles 
   std::vector<int>     fTrackId;
   std::vector<float>   fMother; 
@@ -167,13 +186,14 @@ private:
 // -- Constructor --
 duneana::TPGAna::TPGAna(fhicl::ParameterSet const& p)
   : EDAnalyzer{p},
+  fADC_SAMPLING_RATE_IN_DTS(p.get<int>("ADC_SAMPLING_RATE_IN_DTS",32)),
   fTPLabel(p.get<art::InputTag>("tp_tag")), // Get TP label from fcl file. 
   fGenLabel(p.get<art::InputTag>("gen_tag")),
   fSimChanLabel(p.get<std::string>("simch_tag", "tpcrawdecoder:simpleSC")),
   fRawDigitLabel(p.get<std::string>("rawdigit_tag", "tpcrawdecoder:daq")),
-  fSaveMC(p.get<bool>("SaveMCInfo",false)), 
-  fSaveTPs(p.get<bool>("SaveTPInfo",false)),
-  fSaveRawDigit(p.get<bool>("SaveRawDigits",false)),
+  fSaveMC(p.get<bool>("SaveMCInfo",true)), 
+  fSaveNeutrino(p.get<bool>("SaveNeutrino",false)),
+  fSaveTPs(p.get<bool>("SaveTPInfo",true)),
   foffsetU(p.get<int>("U_window_end_offset",11)),
   foffsetV(p.get<int>("V_window_end_offset",10))
   {}
@@ -224,10 +244,20 @@ void duneana::TPGAna::beginJob()
     fTree->Branch("TP_signal", &fTP_signal);  
   }
 
-  if (fSaveRawDigit){
-    fTree->Branch("RawDigitChan", &fRawDigitChan);
-    fTree->Branch("RawDigitADCs", &fRawDigitADCs);
 
+  //Nu info
+  if (fSaveNeutrino){
+    fTree->Branch("NuPDG", &fNuPDG);
+    fTree->Branch("NuCCNC", &fNuCCNC);
+    fTree->Branch("NuMode", &fNuMode);
+    fTree->Branch("NuVx", &fNuVx);
+    fTree->Branch("NuVy", &fNuVy);
+    fTree->Branch("NuVz", &fNuVz);
+    fTree->Branch("NuPx", &fNuPx);
+    fTree->Branch("NuPy", &fNuPy);
+    fTree->Branch("NuPz", &fNuPz);
+    fTree->Branch("NuP", &fNuP);
+    fTree->Branch("NuE", &fNuE); 
   }
 
   //G4 info
@@ -259,7 +289,6 @@ void duneana::TPGAna::analyze(art::Event const& e)
   fEvent = e.id().event();
 
   // services 
-  // grab the geometry service
   art::ServiceHandle<geo::Geometry> geo;
   geo::WireReadoutGeom const &wireReadout = art::ServiceHandle<geo::WireReadout>()->Get();
 
@@ -300,13 +329,13 @@ void duneana::TPGAna::analyze(art::Event const& e)
     auto plane =  wireReadout.ROPtoWirePlanes(wireReadout.ChannelToROP(tp.channel)).at(0).Plane;
 
     // Create recob::Hit for TP (with a larger time window for induction planes)
-    float tp_rms = (plane == 2) ? tp.time_over_threshold * 2 : tp.time_over_threshold * 4;
+    float tp_rms = (plane == 2) ? (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 2 : (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 4;
     recob::Hit ThisHit(
                        static_cast<raw::ChannelID_t>(tp.channel),        //channel
-                       static_cast<raw::TDCtick_t>(tp.time_start), //start tick
-                       static_cast<raw::TDCtick_t>(tp.time_start + tp.time_over_threshold), //end tick
-                       static_cast<float>(tp.time_peak), // peak time 
-                       static_cast<float>(tp.time_over_threshold * 0.5), // sigma peak time 
+                       static_cast<raw::TDCtick_t>(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS), //start tick
+                       static_cast<raw::TDCtick_t>((tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS) + (tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS)), //end tick
+                       static_cast<float>((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS)), // peak time 
+                       static_cast<float>((tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS) * 0.5), // sigma peak time 
                        static_cast<float>(tp_rms), // rms 
                        static_cast<float>(tp.adc_peak), //peak amplitude 
                        static_cast<float>(0), // sigma peak amplitude 
@@ -376,9 +405,9 @@ void duneana::TPGAna::analyze(art::Event const& e)
     }
     // Store TP info 
     fTP_channels.push_back(tp.channel);
-    fTP_startT.push_back(tp.time_start);
-    fTP_peakT.push_back(tp.time_peak);
-    fTP_TOT.push_back(tp.time_over_threshold);
+    fTP_startT.push_back(tp.time_start / this->fADC_SAMPLING_RATE_IN_DTS);
+    fTP_peakT.push_back((tp.time_peak / this->fADC_SAMPLING_RATE_IN_DTS));
+    fTP_TOT.push_back(tp.time_over_threshold / this->fADC_SAMPLING_RATE_IN_DTS);
     fTP_SADC.push_back(tp.adc_integral);
     fTP_peakADC.push_back(tp.adc_peak);
     fTP_plane.push_back(plane);
@@ -386,28 +415,6 @@ void duneana::TPGAna::analyze(art::Event const& e)
   }
 
 
-  if (fSaveRawDigit){
-
-    auto const& digits_handle=e.getValidHandle<std::vector<raw::RawDigit>>(fRawDigitLabel);
-    auto& digits_in =*digits_handle;
-
-    for(auto&& digit: digits_in){
-
-      fRawDigitChan.push_back(digit.Channel());
-      /*
-      float ped = digit.GetPedestal();
-      const auto& adcs = digit.ADCs();
-      std::vector<int16_t> pedsub_adcs;
-      
-      for (auto adc : adcs) {
-        pedsub_adcs.push_back(static_cast<int16_t>((static_cast<float>(adc) - ped)));
-      }
-      
-      fRawDigitADCs.push_back(pedsub_adcs);
-      */
-      fRawDigitADCs.push_back(digit.ADCs());
-    }
-  }
   //access MC particles through truth label instead of G4 handle, 
   //only interested in "signal" particles &  don't want to iterate over & store info for the avalanche of radiologicals
     
@@ -418,6 +425,24 @@ void duneana::TPGAna::analyze(art::Event const& e)
       for (const auto& truth : *mc_truth) {
 
         fnParticles = truth.NParticles();    
+
+        if ( (fSaveNeutrino) && (truth.NeutrinoSet()) ){
+          const simb::MCNeutrino& nu = truth.GetNeutrino();
+          const simb::MCParticle& neutrino = nu.Nu();
+
+          fNuPDG.push_back(neutrino.PdgCode() ); 
+          fNuCCNC.push_back( nu.CCNC() );
+          fNuMode.push_back( nu.Mode() );  
+          fNuVx.push_back( neutrino.Vx() );
+          fNuVy.push_back( neutrino.Vy() );
+          fNuVz.push_back( neutrino.Vz() );
+          fNuPx.push_back( neutrino.Px() );
+          fNuPy.push_back( neutrino.Py() );
+          fNuPz.push_back( neutrino.Pz() );
+          fNuP.push_back( neutrino.P() );
+          fNuE.push_back( neutrino.E() );
+
+        }
 
         //loop over particles with the signal generator label
         for (int iPartc = 0; iPartc < truth.NParticles(); ++iPartc) {
@@ -443,7 +468,7 @@ void duneana::TPGAna::analyze(art::Event const& e)
           fendY.push_back( trueParticle.EndPosition()[1]);
           fendZ.push_back( trueParticle.EndPosition()[2]);
         }
-      } 
+      }
     }
   }
   fTree->Fill();
@@ -544,8 +569,20 @@ void duneana::TPGAna::ResetVariables()
   fTP_trueZ.clear();
   fTP_signal.clear();
 
-  fRawDigitChan.clear(); 
-  fRawDigitADCs.clear(); 
+
+  //Neutrino info 
+  fNuPDG.clear();
+  fNuCCNC.clear();
+  fNuMode.clear();
+  fNuVx.clear();
+  fNuVy.clear();
+  fNuVz.clear();
+  fNuPx.clear();
+  fNuPy.clear();
+  fNuPz.clear();
+  fNuP.clear();
+  fNuE.clear();
+
 
   // GEANT4 info
   fnParticles = 0;
