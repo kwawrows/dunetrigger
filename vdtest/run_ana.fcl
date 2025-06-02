@@ -40,9 +40,20 @@ services.Geometry: {
     GDML: "dunevd10kt_3view_30deg_v5_refactored_1x8x6ref.gdml"
     SurfaceY: 147828
     SortingParameters: {
-         tool_type: "GeoObjectSorterAPA"
+         tool_type: "GeoObjectSorterCRU"
     }
 }
+
+AuxDetGeometry: {
+   GDML: "dunevd10kt_3view_30deg_v5_refactored_1x8x6ref.gdml"
+   Name: "dune10kt_v6"
+   SortingParameters: {
+      tool_type: "AuxDetGeoObjectSorterStandard"
+   }
+   service_type: "AuxDetGeometry"
+}
+
+
 
 services.WireReadout: {
       ChannelsPerOpDet: 1
@@ -52,3 +63,5 @@ services.WireReadout: {
 
 
 services.BackTrackerService.BackTracker.SimChannelModuleLabel: "tpcrawdecoder:simpleSC"
+services.AuxDetGeometry: @local::dunevd10kt_1x8x6_3view_30deg_v5_auxdet_geo
+services.Geometry: @local::dunevd10kt_1x8x6_3view_30deg_v5_geo

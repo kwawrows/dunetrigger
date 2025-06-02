@@ -31,9 +31,9 @@ physics:
      tpalg: {
       tool_type: TPAlgTPCSimpleThreshold #Use Simple Threshold TPG alg.
       verbosity: 0
-      threshold_tpg_plane0: 60 #induction U
-      threshold_tpg_plane1: 60 #induction V
-      threshold_tpg_plane2: 50 #collection plane threshold
+      threshold_tpg_plane0: 40 #induction U
+      threshold_tpg_plane1: 40 #induction V
+      threshold_tpg_plane2: 40 #collection plane threshold
      }
     }
   }
@@ -56,4 +56,13 @@ outputs:
    # drop the rawdigits after TPs are generated 
    outputCommands: ["keep *_*_*_*", "drop raw::RawDigit*_*_*_*"] 
  }
+}
+
+Geometry: {
+   GDML: "dunevd10kt_3view_30deg_v5_refactored_1x8x6ref.gdml"
+   SortingParameters: {
+      tool_type: "GeoObjectSorterCRP"
+   }
+   SurfaceY: 147828
+   service_type: "Geometry"
 }

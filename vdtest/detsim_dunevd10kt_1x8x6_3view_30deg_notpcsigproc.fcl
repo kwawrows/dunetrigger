@@ -1,3 +1,6 @@
 #include "standard_detsim_dunevd10kt_1x8x6_3view_30deg.fcl"
 
 physics.producers.tpcrawdecoder: @local::tpcrawdecoder_dunefd_vertdrift_1x8x6_3view_30deg
+
+services.AuxDetGeometry: @local::dunevd10kt_1x8x6_3view_30deg_v5_auxdet_geo
+services.Geometry: @local::dunevd10kt_1x8x6_3view_30deg_v5_geo
